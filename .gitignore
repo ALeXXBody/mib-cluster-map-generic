@@ -28,3 +28,12 @@ Thumbs.db
 build/
 dist/
 __pycache__/
+
+# Emulated-unit test platform: real firmware files must never be committed.
+tests/emul/root/
+tests/emul/.staged
+tests/emul/*.img
+tests/emul/*.efs
+tests/emul/*.bin
+tests/emul/tmp/
+.venv/
