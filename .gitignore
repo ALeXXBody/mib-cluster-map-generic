@@ -26,14 +26,19 @@ __pycache__/
 stream-player
 *.swp
 tests/emul/*.bin
+tests/emul/*/dmdtgo
+tests/emul/dmdtgo
 tests/emul/*.efs
 tests/emul/fixtures/eeprom.txt
 tests/emul/fixtures/*.fec
 tests/emul/*.img
+tests/emul/qnxifs/proc/boot/
+tests/emul/qnx-image-root/
 tests/emul/root/
 tests/emul/.staged
 tests/emul/tmp/
 Thumbs.db
 *.tmp
+# toolchain rootfs + built binaries: not for git
 .venv/
 .vscode/
