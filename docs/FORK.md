@@ -16,7 +16,7 @@ strip the upstream credits from the README when you publish.
 |---|---|
 | Purpose | Tiguan AD1 (MQB) use of phone maps on the Virtual Cockpit, plus a few robustness features useful to every supported car |
 | Target tested base | `MHI2_ER_VWG13_P4521[_1]` / `K4525`, Tiguan AD1 with the 10.x‑inch AID (`3G0920790E` family) |
-| License | GPL‑3.0-or-later, identical to upstream |
+| License | GPL‑3.0, identical to upstream (upstream carries the GPL‑3.0-only file) |
 | Changes | see `CHANGELOG-fork.md` |
 
 ## What the fork adds (vs upstream main today)

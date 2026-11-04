@@ -87,8 +87,15 @@ if [ "$MODE" = install ]; then
         for j in /mnt/app/eso/hmi/lsd/jars/NavActiveIgnore.jar \
                  /mnt/app/eso/hmi/lsd/jars/CarPlayNavigationPatch.jar \
                  /mnt/app/eso/hmi/lsd/jars/VCAndroidAuto.jar; do
-            if [ -f "$j" ] && csum=`cksum "$j" 2>/dev/null | awk '{print $1, $2}'`; then
-                printf '%s %s\n' "$j" "$csum" >> "$MANIFEST"
+            # a missing jar is an expected state (e.g. an AA-only install), not
+            # a broken manifest: only a read/cksum failure counts.
+            if [ -f "$j" ]; then
+                csum=`cksum "$j" 2>/dev/null | awk '{print $1, $2}'`
+                if [ -n "$csum" ]; then
+                    printf '%s %s\n' "$j" "$csum" >> "$MANIFEST"
+                else
+                    manifest_ok=0
+                fi
             fi
         done
         if [ "$manifest_ok" = 1 ]; then

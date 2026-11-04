@@ -296,6 +296,9 @@ static int g_zoomE4 = 10000;
 static char g_keepMap[12] = "";   /* "phone" | "auto"/"" | "off" | "stock" received by conf only */
 static int g_keepIntervalS = 3;
 static int g_keepMax = 30;
+static volatile bool g_arbiterStop = false;   /* set before the final dmdt restore */
+static pthread_t g_arbiterThread = (pthread_t)0;  /* not detached: joined at shutdown */
+static void* keep_map_thread(void*);          /* forward decl for the spawn site */
 static GLfloat fittedVertices[12];
 static GLfloat croppedTexCoords[8];
 
@@ -487,12 +490,11 @@ static void* display_switch_thread(void* arg) {
     (void)arg;
     dmdt_pair(g_dmdtShow, g_dmdtSelect, "cluster switched to the player");
     /* Fork: while the phone streams, the arbiter keeps the cluster on the
-     * player's map when the owner asked for it (GAL_KEEP_MAP=phone). */
+     * player's map when the owner asked for it (GAL_KEEP_MAP=phone). Not
+     * detached: execute_final_commands joins it before the final restore,
+     * so a re-assert can never land after the stock map is back. */
     if (strcmp(g_keepMap, "phone") == 0) {
-        pthread_t arb;
-        if (pthread_create(&arb, NULL, keep_map_thread, NULL) == 0)
-            pthread_detach(arb);
-        else
+        if (pthread_create(&g_arbiterThread, NULL, keep_map_thread, NULL) != 0)
             LOG("arbiter: thread could not start (%s)", strerror(errno));
     }
     return NULL;
@@ -549,10 +551,10 @@ static void* keep_map_thread(void* arg) {
              g_keepMap, g_keepIntervalS, g_keepMax);
     LOG("%s started", note);
     int reAsserts = 0;
-    while (g_running && (g_keepMax <= 0 || reAsserts < g_keepMax)) {
-        for (int step = 0; g_running && step < g_keepIntervalS * 4; ++step)
+    while (!g_arbiterStop && (g_keepMax <= 0 || reAsserts < g_keepMax)) {
+        for (int step = 0; !g_arbiterStop && step < g_keepIntervalS * 4; ++step)
             usleep(250000);
-        if (!g_running) break;
+        if (g_arbiterStop) break;
         if (!keep_map_stock_seen()) continue;
         ++reAsserts;
         LOG("arbiter: stock map seen on the cluster, re-asserting the player (%d/%d)",
@@ -658,14 +660,22 @@ static void request_display_switch() {
  * Main thread, on the way out: let a switch in progress finish, then put the
  * stock map back -- only if this player switched it. A player that never
  * got a keyframe has nothing to undo, and runs no dmdt at all.
+ * Fork: stop the keep-map arbiter first (it is not detached), so a re-assert
+ * cannot land after the stock restore has run.
  */
 static void execute_final_commands() {
     pthread_mutex_lock(&g_switchLock);
     bool started = g_switchStarted;
     g_switchClosed = true;
     pthread_mutex_unlock(&g_switchLock);
-    if (!started) return;
-    pthread_join(g_switchThread, NULL);
+    g_arbiterStop = true;
+    if (started) pthread_join(g_switchThread, NULL);
+    if (strcmp(g_keepMap, "phone") == 0 && started) {
+        /* the arbiter thread only exists when the fork's keep=phone was on */
+        /* it was created inside display_switch_thread; join the same handle
+         * only when it is still unused (empty == not started yet) */
+        if (g_arbiterThread != (pthread_t)0) pthread_join(g_arbiterThread, NULL);
+    }
     dmdt_pair(g_dmdtRestore, g_dmdtSelect, "stock Kombi map restored");
 }
 #else

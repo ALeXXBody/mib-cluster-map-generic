@@ -1,6 +1,6 @@
 # Changelog — this fork
 
-Forked from **MacsInSpace/mib-cluster-map** (upstream main, GPL-3.0):
+Forked from **MacsInSpace/mib-cluster-map** (upstream main, GPL-3.0 (the LICENSE file is GPL-3.0-only, as upstream ships it)):
 `decb7eb Install keeps the owner's changed settings`
 
 ## This fork: 1.0.0-fork.1 (2026-11)

@@ -1,0 +1,712 @@
+{
+	"nodes":{
+		"mmx":{
+			"transport":{
+				"comm":{
+					"*":{
+						"mode":"tcpip",
+						"serializer":"BE",
+						"tcpip":{
+							"address":"10.0.0.15"
+						}
+					}
+				},
+				"tracing":{
+					"*":{
+						"mode":"tcpip",
+						"serializer":"BE",
+						"tcpip":{
+							"address":"10.0.0.15"
+						}
+					}
+				}
+			}
+		},
+		"rcc":{
+			"transport":{
+				"comm":{
+					"*":{
+						"mode":"tcpip",
+						"serializer":"BE",
+						"tcpip":{
+							"address":"10.0.0.16"
+						}
+					}
+				}
+			}
+		},
+		"pcsim":{
+			"transport":{
+				"comm":{
+					"*":{
+						"mode":"tcpip",
+						"serializer":"BE",
+						"tcpip":{
+							"address":"172.16.250.1"
+						}
+					}
+				}
+			}
+		}
+	},
+	"procs":[
+		{
+			"name":"traceserver","exec":null,"node":"mmx","id":1,
+			"transport":{
+				"tracing":{
+					"*":{	"tcpip":{"port":21001}}
+				}
+			}
+		},
+		{
+			"name":"broker","exec":null,"node":"mmx","id":100,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21100}}
+				}
+			}
+		},
+		{
+			"name": "ooc","exec": null,"node": "mmx", "id" :101,
+			"transport":{
+				"comm":{
+					"*" : {	"tcpip": {"port": 21101}}
+				}
+			}
+		},
+		{
+			"name":"servicemgr","exec":null,"node":"mmx","id":102,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21102}}
+				}
+			}
+		},
+		{
+			"name":"displaymanagementProc","exec":null,"node":"mmx","id":103,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21103}}
+				}
+			}
+		},
+		{
+			"name":"persistence_mibhigh","exec":null,"node":"mmx","id":104,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21104}}
+				}
+			}
+		},
+		{
+			"name":"styledbservice","exec":null,"node":"mmx","id":105,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21105}}
+				}
+			}
+		},
+		{
+			"name":"coverflow","exec":null,"node":"mmx","id":106,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21106}}
+				}
+			}
+		},
+		{
+			"name":"comm_forwarder","exec":null, "node":"mmx","id":107,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21107}}
+				}
+			}
+		},
+		{
+			"name":"hmi","exec":null,"node":"mmx","id":200,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21200}}
+				}
+			}
+		},
+		{
+			"name":"speechProc","exec":null,"node":"mmx","id":300,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21300}}
+				}
+			}
+		},
+		{
+			"name":"browserProc","exec":null,"node":"mmx","id":301,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21301}}
+				}
+			}
+		},
+		{
+			"name":"browserProc0","exec":null,"node":"mmx","id":302
+		},
+		{
+			"name":"medialauncher","exec":null,"node":"mmx","id":307,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21307}}
+				}
+			}
+		},
+		{
+			"name":"media","exec":null,"node":"mmx","id":308,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21308}
+					}
+				}
+			}
+		},
+		{
+			"name":"telephoneProc","exec":null,"node":"mmx","id":309,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21309}}
+				}
+			}
+		},
+		{
+			"name":"organizerProc","exec":null,"node":"mmx","id":310,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21310}}
+				}
+			}
+		},
+		{
+			"name":"navigationProc","exec":null,"node":"mmx","id":311,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21311}}
+				}
+			}
+		},
+		{
+			"name":"bluetoothProc","exec":null,"node":"mmx","id":312,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21312}}
+				}
+			}
+		},
+		{
+			"name":"messagingProc","exec":null,"node":"mmx","id":313,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21313}}
+				}
+			}
+		},
+		{
+			"name":"connectivityProc","exec":null,"node":"mmx","id":314,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21314}}
+				}
+			}
+		},
+		{
+			"name":"connectivity_launcher","exec":null,"node":"mmx","id":315,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21315}}
+				}
+			}
+		},
+		{
+			"name":"connectionmanager","exec":null,"node":"mmx","id":316,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21316}}
+				}
+			}
+		},
+		{
+			"name":"explorerProc","exec":null,"node":"mmx","id":317,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21317}}
+				}
+			}
+		},
+		{
+			"name":"swdlclient","exec":null,"node":"mmx","id":318,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21318}}
+				}
+			}
+		},
+		{
+			"name":"MMXDiagService","exec":null,"node":"mmx","id":319,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21319}}
+				}
+			}
+		},
+		{
+			"name":"dev-avrcp","exec":null,"node":"mmx","id":320,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21320}}
+				}
+			}
+		},
+		{
+			"name":"TelitDownloader","exec":null,"node":"mmx","id":321,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21321}}
+				}
+			}
+		},
+		{
+			"name":"navi","exec":null,"node":"mmx","id":322,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21322}}
+				}
+			}
+		},
+		{
+			"name":"deadrec","exec":null,"node":"mmx","id":323,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21323}}
+				}
+			}
+		},
+		{
+			"name":"dev-upnp","exec":null,"node":"mmx","id":324,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21324}}
+				}
+			}
+		},		
+		{
+			"name":"gemmiProc","exec":null,"node":"mmx","id":325,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21325}}
+				}
+			}
+		},
+		{
+			"name":"MMXFecService","exec":null,"node":"mmx","id":326,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21326}}
+				}
+			}
+		},
+		{
+			"name":"rdv_controller","exec":null,"node":"mmx","id":327,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21327}}
+				}
+			}
+		},
+		{
+			"name":"streetviewProc","exec":null,"node":"mmx","id":328,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21328}}
+				}
+			}
+		},
+		{
+			"name":"bthsProc","exec":null,"node":"mmx","id":329,
+			"transport":{
+				"comm":{
+					 "*":{"tcpip":{"port":21329}}
+				}
+			}
+		},
+		{
+			"name":"voice_encoder_app","exec":null,"node":"mmx","id":330,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21330}}
+				}
+			}
+		},
+		{
+			"name":"cartimeprovider","exec":null,"node":"mmx","id":331,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21331}}
+				}
+			}
+		},	
+		{
+			"name":"systemservices","exec":null,"node":"mmx","id":332,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21332}}
+				}
+			}
+		},
+		{
+			"name":"videoovermost","exec": null,"node":"mmx","id":333,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21333}}
+				}
+			}
+		},
+		{
+			"name":"gemibMain","exec":null,"node":"mmx","id":334,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21334}}
+				}
+			}
+		},
+		{
+		"name":"streetviewMain","exec":null,"node":"mmx","id":335,
+				"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21335}}
+				}
+			}
+		},
+		{
+			"name":"esosearchProc","exec":null,"node":"mmx","id":336,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21336}}
+				}
+			}
+		},
+		{
+			"name":"mediaonline","exec":null,"node":"mmx","id":337,
+
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21337}}
+				}
+			}
+		},
+		{
+			"name":"dataconnectionulp","exec":null,"node":"mmx","id":338,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21338}}
+				}
+			}
+		},
+		{
+			"name":"nadProc","exec":null,"node":"mmx","id":339,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21339}}
+				}
+			}
+		},
+		{
+			"name":"mirrorlink","exec":null,"node":"mmx","id":340,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21340}}
+				}
+			}
+		},
+		{
+			"name":"rdiserver","exec":null,"node":"mmx","id":341,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21341}}
+				}
+			}
+		},
+		{
+			"name":"gemibMain2","exec":null,"node":"mmx","id":342,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21342}}
+				}
+			}
+		},
+		{
+			"name":"cinflash","exec":null,"node":"mmx","id":343,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21343}}
+				}
+			}
+		},
+		{
+			"name":"mediarouter","exec":null,"node":"mmx","id":344,
+
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21344}}
+				}
+			}
+		},
+		{
+			"name":"trdevapp","exec":null,"node":"mmx","id":345,
+
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21345}}
+				}
+			}
+		},
+		{
+			"name":"iconprv","exec":null,"node":"mmx","id":346,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21346}}
+				}
+			}
+		},
+		{
+			"name":"sseProc","exec":null,"node":"mmx","id":347,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21347}}
+				}
+			}
+		},
+		{
+			"name":"gemib_commServer","exec":null,"node":"mmx","id":348,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21348}}
+				}
+			}
+		},
+		{
+			"name":"EsoPosProviderProcess","exec":null,"node":"mmx","id":349,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21349}}
+				}
+			}
+		},
+		{
+			"name":"radiodata","exec":null,"node":"mmx","id":350,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21350}}
+				}
+			}
+		},
+		{
+			"name":"dio_manager","exec":null,"node":"mmx","id":351,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21351}}
+				}
+			}
+		},
+		{
+			"name":"sdtool","exec":null,"node":"mmx","id":352,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21352}}
+				}
+			}
+		},
+		{
+			"name":"smartphone_integrator","exec":null,"node":"mmx","id":353,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21353}
+					}
+				}
+			}
+		},
+		{
+			"name":"gal","exec":null,"node":"mmx","id":354,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21354}
+					}
+				}
+			}
+		},
+		{
+			"name":"asiaWordPredictionProc","exec":null,"node":"mmx","id":355,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21355}
+					}
+				}
+			}
+		},		
+				{
+			"name":"pnav","exec":null,"node":"mmx","id":356,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21356}
+					}
+				}
+			}
+		},		
+		{
+			"name":"videoencoderservice","exec": null,"node":"mmx","id":357,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21357}}
+				}
+			}
+		},
+		{
+			"name":"rselightProc","exec":null,"node":"mmx","id":358,
+			"transport":{
+				"comm":{
+					"*":{   "tcpip":{"port":21358}}
+				}
+			}
+		},
+		{
+			"name":"carlife","exec":null,"node":"mmx","id":359,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21359}}
+				}
+			}
+        },
+		{
+			"name":"MIBRoot","exec":"null","node":"rcc","id":400,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21400}}
+				}
+			}
+		},
+		{
+			"name":"ASIBridge","exec":"null","node":"rcc","id":401,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21401}}
+				}
+			}
+		},
+		{
+			"name":"DSIBridge","exec":"null","node":"rcc","id":402,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21402}}
+				}
+			}
+		},
+		{
+			"name":"remotehmi","exec":null,"node":"pcsim","id":500,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21500}}}
+			}
+		},
+		{
+			"name":"jtfclient","exec":null,"node":"pcsim","id":501,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21501}}}
+			}
+		},
+		{
+			"name":"jtfservice","exec":null,"node":"pcsim","id":502,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21502}}}
+			}
+		},
+		{
+			"name":"testclient","exec":null,"node":"mmx","id":503,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21503}}
+				}
+			}
+		},
+		{
+			"name": "DMRCClient","exec": null,"node": "mmx", "id" : 504,
+			"transport": {
+				"comm":{
+					"*":{	"tcpip":{"port":21504}}
+				}
+			}
+		},
+		{
+		  "name":"vdetestservice","exec":null,"node":"mmx","id":506,
+		  "transport":{
+			  "comm":{
+				  "*":{	"tcpip":{"port":21506}}
+				}
+			}
+		},
+		{
+			"name":"testservice", "exec":null, "node": "mmx", "id": 507,
+			"transport":{
+				"comm":{
+					"*": { "tcpip": { "port": 21507 } }
+				}
+			}
+		},
+		{
+			"name":"testclientRCC","exec":"null","node":"rcc","id":508,
+			"transport":{
+				"comm":{
+					"*":{"tcpip":{"port":21508}}
+				}
+			}
+		},
+		{
+			"name":"testclientRCC_2","exec":null,"node":"rcc","id":509,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21509}}
+				}
+			}
+		},
+		{
+			"name":"MMX2RCCEarlyApp","exec":null,"node":"rcc","id":510,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21510}}
+				}
+			}
+		},
+		{
+			"name":"cap_app","exec":null,"node":"mmx","id":511,
+			"transport":{
+				"comm":{
+					"*":{	"tcpip":{"port":21511}}
+				}
+			}
+		}
+	],
+	"comm_settings":{
+		"cpp":{
+			"factory_path":"/usr/lib/factories",
+			"agent_connect_retries":0,
+			"agent_connect_retry_delay":100,
+			"interface_mismatch":"allow",
+			"priorities" : {
+				"MIBRoot": {
+					"worker" : 11,
+					"notifier":11,
+					"agentthread":11
+				},
+				"default_ao" : {
+					"comm.broker.Agent":11
+				}
+			}
+		}
+	}
+}
