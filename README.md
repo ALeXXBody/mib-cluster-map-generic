@@ -1,5 +1,16 @@
 # MIB Cluster Map
 
+> **This is a targeted fork of MacsInSpace's `mib-cluster-map`**, maintained for
+> Tiguan AD1 (MQB) owners and adding a few robustness features:
+> a `GAL_KEEP_MAP` cockpit source arbiter, player-side zoom
+> (`GAL_PLAYER_ZOOM_E4`), a green-menu **Verify installed files** action, and
+> Tiguan documentation. See [`docs/FORK.md`](docs/FORK.md) (identity and
+> licence), [`CHANGELOG-fork.md`](CHANGELOG-fork.md) (what changed) and
+> [`docs/Tiguan.md`](docs/Tiguan.md) (Tiguan-specific usage).
+>
+> Everything below is upstream MacsInSpace's README, verbatim, with its own
+> credits — those remain the reason this works at all.
+
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/macsinspace)
 If this saves you a dealer visit, a [coffee](https://buymeacoffee.com/macsinspace) helps pay for the AI tokens that build it.
 

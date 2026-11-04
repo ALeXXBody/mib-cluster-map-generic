@@ -67,6 +67,39 @@ done
 
 if [ "$MODE" = install ]; then
     if grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" "$RESULT"; then
+    # Fork addition: a per-file checksum manifest on the unit, for the green
+    # menu's "Verify install" action. CRCs (cksum), because that tool is on
+    # every unit. These paths mirror what enable_hook.sh installs.
+    UNIT_DIR="/mnt/app/eso/lib/gal_dualscreen"
+    MANIFEST="$UNIT_DIR/verify_manifest.txt"
+    : > "$MANIFEST" 2>/dev/null && manifest_ok=1
+    if [ "$manifest_ok" = 1 ]; then
+        for f in "/mnt/app/eso/lib/gal_dualscreen/libgal_hook.so" \
+                 "/mnt/app/navigation/stream-player" \
+                 "$UNIT_DIR/gal_dualscreen.conf" \
+                 "/mnt/system/etc/eso/production/smartphone_integrator.json"; do
+            if [ -f "$f" ] && csum=`cksum "$f" 2>/dev/null | awk '{print $1, $2}'`; then
+                printf '%s %s\n' "$f" "$csum" >> "$MANIFEST"
+            else
+                manifest_ok=0
+            fi
+        done
+        for j in /mnt/app/eso/hmi/lsd/jars/NavActiveIgnore.jar \
+                 /mnt/app/eso/hmi/lsd/jars/CarPlayNavigationPatch.jar \
+                 /mnt/app/eso/hmi/lsd/jars/VCAndroidAuto.jar; do
+            if [ -f "$j" ] && csum=`cksum "$j" 2>/dev/null | awk '{print $1, $2}'`; then
+                printf '%s %s\n' "$j" "$csum" >> "$MANIFEST"
+            fi
+        done
+        if [ "$manifest_ok" = 1 ]; then
+            echo "Verify manifest: written to $MANIFEST" >> "$RESULT"
+        else
+            echo "Verify manifest: partially written (cksum unavailable?)" >> "$RESULT"
+        fi
+    fi
+    fi
+
+    if grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" "$RESULT"; then
         # Make the green engineering menu reachable (hold MENU > Testmode), so
         # the ClusterMap screen this update copied can be used for status,
         # logs and uninstall. The same switch the MQB Coding MIB2 Toolbox sets

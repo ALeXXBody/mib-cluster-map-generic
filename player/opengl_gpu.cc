@@ -274,8 +274,31 @@ static GLfloat backgroundColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 static int g_marginW = 0, g_marginH = 0;
 static int g_pixelAspectE4 = 10000;
 static int g_priority = 0;      /* GAL_PLAYER_PRIORITY, 0 = as spawned */
+/*
+ * Fork additions. GAL_PLAYER_ZOOM_E4 zooms the phone's picture around the
+ * centre of the frame, in 1/10000 units (10000 = 1.0, 13500 = 1.35). The
+ * phone is untouched; the player just reads a smaller texture rectangle,
+ * so it costs no extra decode time and survives phone updates. A runtime
+ * control file (/tmp/stream-player.zoom, one float) can change it while the
+ * player is up, re-read every couple of seconds.
+ */
+static int g_zoomE4 = 10000;
+/*
+ * GAL_KEEP_MAP: the cockpit source arbiter. "phone" re-asserts the player's
+ * context every few seconds for as long as the player is streaming, when a
+ * probe says the stock map has been switched back in (this is the switch
+ * race upstream calls #19/#43). "auto"/unset decides nothing: the player
+ * stays a single-shot switcher exactly as upstream. "off" disables the
+ * thread entirely. GAL_KEEP_INTERVAL_S spaces the probes; GAL_KEEP_MAX
+ * bounds the re-asserts per session, so a settings conflict degrades to an
+ * occasional blink instead of a fight.
+ */
+static char g_keepMap[12] = "";   /* "phone" | "auto"/"" | "off" | "stock" received by conf only */
+static int g_keepIntervalS = 3;
+static int g_keepMax = 30;
 static GLfloat fittedVertices[12];
 static GLfloat croppedTexCoords[8];
+
 static void fit_frame(int frameW, int frameH) {
     float sx = 1.0f, sy = 1.0f, cu = 0.0f, cv = 0.0f, par = 1.0f;
     int contentW = frameW, contentH = frameH;
@@ -294,13 +317,33 @@ static void fit_frame(int frameW, int frameH) {
         if (contentAspect > windowAspect * 1.01f) sy = windowAspect / contentAspect;
         else if (contentAspect < windowAspect * 0.99f) sx = contentAspect / windowAspect;
     }
+    /* Zoom shrinks the sampled rectangle, centred, after the margin crop.
+     * For a texture range [a, b], zoom z keeps half-length h' = (b-a)/2 / z
+     * around the same centre, so it composes with the margin crop. */
+    float u0 = cu, v0 = cv, u1 = 1.0f - cu, v1 = 1.0f - cv;
+    {
+        float zoom = (float)g_zoomE4 / 10000.0f;
+        if (zoom > 3.0f) zoom = 3.0f;
+        if (zoom > 1.0f) {
+            float hm = (u1 - u0) * 0.5f / zoom;
+            float um = (u1 + u0) * 0.5f;
+            u0 = um - hm; u1 = um + hm;
+            float vm = (v1 + v0) * 0.5f;
+            float hv = (v1 - v0) * 0.5f / zoom;
+            v0 = vm - hv; v1 = vm + hv;
+        }
+    }
     const GLfloat v[12] = { -sx, sy, 0.0f,  sx, sy, 0.0f,  sx, -sy, 0.0f,  -sx, -sy, 0.0f };
-    const GLfloat t[8] = { cu, cv,  1.0f - cu, cv,  1.0f - cu, 1.0f - cv,  cu, 1.0f - cv };
+    const GLfloat t[8] = { u0, v0,  u1, v0,  u1, v1,  u0, v1 };
     memcpy(fittedVertices, v, sizeof v);
     memcpy(croppedTexCoords, t, sizeof t);
-    LOG("render: %dx%d frame, %dx%d after margins, pixel aspect %.4f, in a %dx%d window, drawn %dx%d",
+    if (g_zoomE4 != 10000)
+        LOG("render: zoom %.3f applied, tex %.3f..%.3f / %.3f..%.3f",
+            (float)g_zoomE4 / 10000.0f, u0, u1, v0, v1);
+    LOG("render: %dx%d frame, %dx%d after margins, pixel aspect %.4f, in a %dx%d window, drawn %dx%d%s",
         frameW, frameH, contentW, contentH, par, windowWidth, windowHeight,
-        (int)(sx * windowWidth + 0.5f), (int)(sy * windowHeight + 0.5f));
+        (int)(sx * windowWidth + 0.5f), (int)(sy * windowHeight + 0.5f),
+        (g_zoomE4 != 10000) ? " (zoom active)" : "");
 }
 
 #ifdef __QNX__
@@ -438,9 +481,87 @@ static pthread_t g_switchThread;
 static bool g_switchStarted = false;   /* g_switchLock */
 static bool g_switchClosed = false;    /* g_switchLock: shutting down */
 
+static void* keep_map_thread(void* arg);   /* forward: the keep=phone arbiter */
+
 static void* display_switch_thread(void* arg) {
     (void)arg;
     dmdt_pair(g_dmdtShow, g_dmdtSelect, "cluster switched to the player");
+    /* Fork: while the phone streams, the arbiter keeps the cluster on the
+     * player's map when the owner asked for it (GAL_KEEP_MAP=phone). */
+    if (strcmp(g_keepMap, "phone") == 0) {
+        pthread_t arb;
+        if (pthread_create(&arb, NULL, keep_map_thread, NULL) == 0)
+            pthread_detach(arb);
+        else
+            LOG("arbiter: thread could not start (%s)", strerror(errno));
+    }
+    return NULL;
+}
+
+/*
+ * Fork: the cockpit source arbiter ("GAL_KEEP_MAP"). The stock HMI can
+ * switch the cluster back to its own map while the phone is streaming
+ * (upstream #19/#43); with keep=phone the player re-asserts itself when a
+ * probe confirms that. The probe is `dmdt gs` (the same query upstream
+ * uses when checking that the stock Kombi map is up); a failure or an
+ * unexpected output silently no-ops, so a future dmdt rewrite can only
+ * turn the feature off, never fight.
+ */
+static bool keep_map_stock_seen() {
+#ifdef __QNX__
+    static const char* cmd =
+        "LD_LIBRARY_PATH=/eso/lib:/lib:/usr/lib "
+        "IPL_CONFIG_DIR=/etc/eso/production /eso/bin/apps/dmdt gs 2>/dev/null";
+    char buf[8192];
+    char needle[24];
+    snprintf(needle, sizeof(needle), "%u", g_vcRestore);
+    size_t nlen = strlen(needle);
+    FILE* p = popen(cmd, "r");
+    if (!p) return false;
+    size_t got = fread(buf, 1, sizeof(buf) - 1, p);
+    int rc = pclose(p);
+    if (got == 0) {
+        if (rc != 0) LOG("arbiter: probe exit=%d, output empty (probe unsupported?)", rc);
+        return false;
+    }
+    buf[got] = '\0';
+    bool seen = false;
+    for (size_t i = 0; i + nlen <= got; ++i) {
+        if (strncmp(buf + i, needle, nlen) != 0) continue;
+        /* word boundary, so 3 does not match 33 */
+        bool left = (i == 0 || buf[i-1] < '0' || buf[i-1] > '9');
+        bool right = (i + nlen == got || buf[i+nlen] < '0' || buf[i+nlen] > '9');
+        if (left && right) { seen = true; break; }
+    }
+    if (rc != 0) LOG("arbiter: probe exit=%d", rc);
+    return seen;
+#else
+    (void)g_vcRestore;
+    return false;
+#endif
+}
+
+static void* keep_map_thread(void* arg) {
+    (void)arg;
+    if (strcmp(g_keepMap, "phone") != 0) return NULL;   /* auto/off/stock: upstream behaviour */
+    char note[64];
+    snprintf(note, sizeof(note), "arbiter: keep=%s interval=%ds max=%d",
+             g_keepMap, g_keepIntervalS, g_keepMax);
+    LOG("%s started", note);
+    int reAsserts = 0;
+    while (g_running && (g_keepMax <= 0 || reAsserts < g_keepMax)) {
+        for (int step = 0; g_running && step < g_keepIntervalS * 4; ++step)
+            usleep(250000);
+        if (!g_running) break;
+        if (!keep_map_stock_seen()) continue;
+        ++reAsserts;
+        LOG("arbiter: stock map seen on the cluster, re-asserting the player (%d/%d)",
+            reAsserts, g_keepMax);
+        dmdt_pair(g_dmdtShow, g_dmdtSelect, "arbiter re-assert");
+        if (g_keepMax > 0 && reAsserts >= g_keepMax)
+            LOG("arbiter: re-assert limit reached; leaving the cluster to the car for this session");
+    }
+    LOG("arbiter: thread ends");
     return NULL;
 }
 
@@ -1543,6 +1664,22 @@ static void load_player_config() {
             } else if (strcmp(key, "GAL_VC_RESTORE_DISPLAYABLE_ID") == 0) {
                 int v = atoi(val);
                 if (v > 0 && v < 1000) g_vcRestore = (unsigned)v;
+            } else if (strcmp(key, "GAL_PLAYER_ZOOM_E4") == 0) {
+                /* Fork: zoom the phone's picture around the centre, 10000 = 1.0. */
+                int v = atoi(val);
+                if (v >= 10000 && v <= 30000) g_zoomE4 = v;
+            } else if (strcmp(key, "GAL_KEEP_MAP") == 0) {
+                /* Fork: phone | auto | off | stock — the cockpit source arbiter. */
+                if (strlen(val) < sizeof(g_keepMap)) {
+                    strncpy(g_keepMap, val, sizeof(g_keepMap) - 1);
+                    g_keepMap[sizeof(g_keepMap) - 1] = '\0';
+                }
+            } else if (strcmp(key, "GAL_KEEP_INTERVAL_S") == 0) {
+                int v = atoi(val);
+                if (v >= 1 && v <= 30) g_keepIntervalS = v;
+            } else if (strcmp(key, "GAL_KEEP_MAX") == 0) {
+                int v = atoi(val);
+                if (v >= 1 && v <= 1000) g_keepMax = v;
             } else if (strcmp(key, "GAL_PLAYER_STATS") == 0) {
                 /* 0 drops the once-a-second STATS line; everything else is still logged. */
                 g_verbose = atoi(val) != 0;
@@ -1987,6 +2124,28 @@ int main(int argc, char* argv[]) {
             int w = dispBuf->width;
             int h = dispBuf->height;
             if (firstFrame || w != prevFbW || h != prevFbH) fit_frame(w, h);
+            else {
+                /* Fork: the zoom control file can change while the player is
+                 * up. Re-read it at most every ~2 s of rendered frames so a
+                 * GEM toggle takes effect without a session restart. */
+                static uint64_t s_lastZoomUs = 0;
+                uint64_t nowUs = now_us();
+                if (nowUs - s_lastZoomUs > 2000000ULL) {
+                    s_lastZoomUs = nowUs;
+                    FILE* z = fopen("/tmp/stream-player.zoom", "r");
+                    if (z) {
+                        float f = 0.0f;
+                        if (fscanf(z, "%f", &f) == 1 && f >= 1.0f && f <= 3.0f) {
+                            int e4 = (int)(f * 10000.0f + 0.5f);
+                            if (e4 != g_zoomE4) {
+                                g_zoomE4 = e4;
+                                LOG("render: zoom control file set %.3f", f);
+                            }
+                        }
+                        fclose(z);
+                    }
+                }
+            }
 
             uint8_t* pY = dispBuf->pixels;
             uint8_t* pU = pY + (w * h);
