@@ -40,6 +40,7 @@ done
 
 # stage the IFS into the chroot's /w layer (mkifs resolves host-relative paths)
 mkdir -p "$CHROOT/w"
+if [ "${1:-}" = "(none)" ]; then : > "$CHROOT/w/dmdt_args_from_host"; else printf '%s' "${*:-gs}" > "$CHROOT/w/dmdt_args_from_host"; fi
 cp "$IFS_BUILD" "$CHROOT/w/build-unit.build"
 rm -rf "$CHROOT/w/eso" "$CHROOT/w/lib" "$CHROOT/w/config" "$CHROOT/w/dmdtgo" "$CHROOT/w/rundmdt"
 cp -a "$IFS_UNIT/." "$CHROOT/w/"

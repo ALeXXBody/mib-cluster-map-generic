@@ -54,6 +54,10 @@ extern "C" {
 #include <libavutil/avutil.h>
 }
 
+// Fork: the turn-info strip ("Turn info in the info bar" in the Addon's GEM)
+// wired after the YUV texture upload — see turnstrip.h for the design/logic.
+#include "turnstrip.h"
+
 // ---------------- Configuration & Performance Knobs ----------------
 static const int kBufferPoolSize    = 16;     // 16-slot frame pool for jitter smoothing & zero contention
 static int   g_ffmpegThreadCount    = 2;      // Default: 2 worker threads for multi-core Tegra 3
@@ -2160,6 +2164,12 @@ int main(int argc, char* argv[]) {
             uint8_t* pY = dispBuf->pixels;
             uint8_t* pU = pY + (w * h);
             uint8_t* pV = pU + ((w / 2) * (h / 2));
+
+            /* Fork: the "Turn info in the info bar" strip is drawn into the
+             * Y plane BEFORE this frame's texture upload; ts_poll reads its
+             * two control files at most 1x/s, so a GEM toggle is live. */
+            ts_poll(now_us());
+            if (ts_on) ts_draw(pY, w, h);
 
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, g_texY);

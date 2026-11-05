@@ -4,7 +4,7 @@
 # add the mkifs "option" directive nothing to check
 [virtual=armle-v7,raw] .bootstrap = {
     /w/startup-virt -v -S
-    PATH=:/proc/boot:/eso/bin/apps LD_LIBRARY_PATH=:/proc/boot:/lib:/eso/lib procnto-smp -vvv
+    PATH=:/proc/boot:/eso/bin/apps LD_LIBRARY_PATH=:/proc/boot:/proc/boot/lib:/lib:/eso/lib procnto-smp -vvv
 }
 [+script] .script = {
     procmgr_symlink ../../proc/boot/libc.so.3 /usr/lib/ldqnx.so.2
@@ -25,7 +25,7 @@ libsocket.so.3
 devc-serdebug=/w/devc-serdebug
 
 [perms=+r,+x]
-proc/boot/eso/bin/apps/dmdt=/w/eso/bin/apps/dmdt
+eso/bin/apps/dmdt=/w/eso/bin/apps/dmdt
 lib/libdmdt_core.so=/w/lib/libdmdt_core.so
 lib/libcomm.so=/w/lib/libcomm.so
 lib/libosal.so=/w/lib/libosal.so
@@ -34,5 +34,6 @@ lib/libiplcommon.so=/w/lib/libiplcommon.so
 lib/libeal.so=/w/lib/libeal.so
 lib/libecpp-ne.so.4=/w/lib/libecpp-ne.so.4
 dmdtgo=/w/dmdtgo
+eso/bin/apps/dmdt_args=/w/dmdt_args_from_host
 
 config/framework.json=/w/config/framework.json

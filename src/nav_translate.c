@@ -264,6 +264,7 @@ int nav_translate(const unsigned char *in, unsigned in_len,
     pw o;
 
     if (in == NULL || in_len < 2u) return NAV_TRANSLATE_PASS;
+    g_last.road = NULL;
     id = ((unsigned)in[0] << 8) | in[1];
     s.p = in + 2;
     s.e = in + in_len;
@@ -302,6 +303,7 @@ int nav_translate(const unsigned char *in, unsigned in_len,
         g_last.event = t.event;
         g_last.side = t.side;
         g_last.road_len = t.road_len;
+        g_last.road = (t.road_len > 0u) ? (const char *)t.road : NULL;
         return (int)o.n;
     }
     if (id == 0x8007u) {
@@ -314,6 +316,7 @@ int nav_translate(const unsigned char *in, unsigned in_len,
         g_last.to_id = 0x8005u;
         g_last.meters = g_meters;
         g_last.seconds = g_seconds;
+        g_last.road = (g_last.road_len > 0u && g_last.road != NULL) ? g_last.road : NULL;
         return (int)o.n;
     }
     if (id == 0x8003u) {

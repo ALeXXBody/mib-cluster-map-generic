@@ -2595,6 +2595,72 @@ static void input_inject_poll(void *router);
 static void cluster_input_message(void *router, unsigned char channel, const void *buffer);
 static void hex_preview(const unsigned char *p, unsigned n, char *out, size_t out_len);
 
+/* ---- Turn-info file (the player's "turn info strip" feature) -------------
+ * One ASCII line rewritten on every change of the translated navigation
+ * info: "road | 38 min | 35 mi". Read by the fork player
+ * (/tmp/gal_nav_info) which, when its strip is on, draws a bottom strip
+ * with it (units' dmdt has no text surface; see docs/android-auto-research-
+ * and-related-projects notes). Enabled by the GAL_NAV_INFO_FILE switch
+ * (off by default; the Addon's Turn-info switch sets it on install).
+ * Written atomically (tmp + rename) so the player never reads half a line. */
+#define NAV_INFO_PATH  "/tmp/gal_nav_info"
+static int g_nav_info_file = -1;
+
+static int nav_info_enabled(void)
+{
+    if (g_nav_info_file < 0) {
+        const char *v = getenv("GAL_NAV_INFO_FILE");
+        g_nav_info_file = (v != NULL && strcmp(v, "0") != 0 && strcmp(v, "false") != 0) ? 1 : 0;
+        gal_hook_logf("event=nav.infofile enabled=%d path=" NAV_INFO_PATH, g_nav_info_file);
+    }
+    return g_nav_info_file;
+}
+
+/* To keep the write bounded: a road name is cut to 60 characters, the
+ * distances formatted mm:ss; non-printable bytes become spaces. */
+static void write_nav_info(const char *road, unsigned road_len,
+                           unsigned meters, unsigned seconds, unsigned event)
+{
+    char line[320];
+    size_t i, used = 0u;
+    FILE *f;
+    unsigned e = event, sec = seconds;
+
+    /* ASCII filter */
+    for (i = 0u; i < road_len && used + 1u < sizeof line; ++i) {
+        char c = road[i];
+        if ((unsigned char)c < 0x20u || (unsigned char)c > 0x7eu) c = ' ';
+        line[used++] = c;
+    }
+    line[used] = '\0';
+    if (used > 60u) used = 60u;   /* long road cut again after the filter */
+    line[used] = '\0';
+
+    f = fopen(NAV_INFO_PATH ".new", "w");
+    if (f == NULL) return;
+    if (e == 0u && sec == 0u && meters == 0u && used == 0u) {
+        fprintf(f, "STOP\n");
+    } else {
+        unsigned mins = sec / 60u, hrs = mins / 60u, miles = (meters * 5u + 400u) / 800u;
+        char eta[32];
+        if (sec < 60u)
+            snprintf(eta, sizeof eta, "%u s", (unsigned)sec);
+        else if (hrs > 0u)
+            snprintf(eta, sizeof eta, "%uh%02u", (unsigned)hrs, (unsigned)(mins % 60u));
+        else
+            snprintf(eta, sizeof eta, "%u min", (unsigned)mins);
+        if (miles > 0u)
+            fprintf(f, "%s | %s | %u mi\n", line, eta, miles);
+        else
+            fprintf(f, "%s | %s |\n", line, eta);
+        (void)e;
+    }
+    fclose(f);
+    (void)rename(NAV_INFO_PATH ".new", NAV_INFO_PATH);
+}
+
+/* ---- Turn-info file ------------------------------------------------------ */
+
 void _ZN13MessageRouter12routeMessageEhRK10shared_ptrI8IoBufferE(
     void *router, unsigned char channel, const void *buffer)
 {
@@ -2733,6 +2799,23 @@ void _ZN13MessageRouter12routeMessageEhRK10shared_ptrI8IoBufferE(
                         gal_hook_logf("event=nav.translate from=0x%04x to=0x%04x bytes=%u->%d event=%u side=%u road_len=%u meters=%u seconds=%u status=%d n=%lu",
                                       t->from_id, t->to_id, nb, n, t->event, t->side,
                                       t->road_len, t->meters, t->seconds, t->status, translated);
+                    /* Optional file feed for the player's turn-info strip
+                     * (src/nav_info.h in the fork player): one line, ASCII,
+                     * rewritten atomically. Written when enabled so a phone
+                     * that does not send the newer pair writes nothing. */
+                    if (nav_info_enabled()) {
+                        static char last_road[240];
+                        static unsigned last_m = 0xffffffffu, last_s = 0xffffffffu, last_e = 0xffffffffu;
+                        if (t->road_len != strlen(last_road) ||
+                            t->meters != last_m || t->seconds != last_s ||
+                            t->event != last_e) {
+                            write_nav_info(t->road, t->road_len, t->meters, t->seconds, t->event);
+                            if (t->road_len < sizeof last_road) {
+                                memcpy(last_road, t->road, t->road_len); last_road[t->road_len] = 0;
+                            }
+                            last_m = t->meters; last_s = t->seconds; last_e = t->event;
+                        }
+                    }
                 }
             }
         }

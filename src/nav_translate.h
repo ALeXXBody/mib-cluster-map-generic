@@ -25,6 +25,7 @@ NAV_TRANSLATE_HIDDEN int nav_translate(const unsigned char *in, unsigned in_len,
 typedef struct nav_translate_info {
     unsigned from_id, to_id;
     unsigned event, side, meters, seconds, road_len;
+    const char *road;   /* the road/payload text, owned by nav_translate.c */
     int status;
 } nav_translate_info;
 NAV_TRANSLATE_HIDDEN const nav_translate_info *nav_translate_last(void);
