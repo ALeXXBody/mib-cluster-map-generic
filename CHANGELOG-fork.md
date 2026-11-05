@@ -35,3 +35,9 @@ vfpv3-d16) and deployed to the M.I.B. Addon payload. Carries Zoom and the
 keep-map arbiter. Built natively instead of in Docker on a TrueNAS LXC host
 (the image's netavark/crun backends are restricted there); `/opt/qnx650`
 symlinked to the unpacked image root. Pending the owner's car verification.
+
+### Note on the 5x7 font (features-card-20261105 player)
+
+`player/turnstrip.h` transcribes the classic public-domain 5x7 LCD font
+(the table Adafruit's GLCD library popularised; values cross-checked for
+the glyphs a road text needs). Credited here so the provenance is explicit.
