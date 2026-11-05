@@ -1,4 +1,8 @@
-# Tiguan AD1 (AID10 virtual cockpit): using this fork
+# Car test notes — Tiguan AD1 (AID10 virtual cockpit)
+
+Measurements and results from the car-verified test unit of this fork. Every
+other location/service operates from the profile table alone.
+
 
 **What the Tiguan AD1 is**, hardware-wise for this project:
 

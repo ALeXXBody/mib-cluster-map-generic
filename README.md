@@ -1,12 +1,14 @@
 # MIB Cluster Map
 
-> **This is a targeted fork of MacsInSpace's `mib-cluster-map`**, maintained for
-> Tiguan AD1 (MQB) owners and adding a few robustness features:
-> a `GAL_KEEP_MAP` cockpit source arbiter, player-side zoom
-> (`GAL_PLAYER_ZOOM_E4`), a green-menu **Verify installed files** action, and
-> Tiguan documentation. See [`docs/FORK.md`](docs/FORK.md) (identity and
-> licence), [`CHANGELOG-fork.md`](CHANGELOG-fork.md) (what changed) and
-> [`docs/Tiguan.md`](docs/Tiguan.md) (Tiguan-specific usage).
+> **This is a fork of MacsInSpace's `mib-cluster-map`** for MHI2 (MIB2.5 High)
+> trains, adding a few robustness features: a `GAL_KEEP_MAP` cockpit source
+> arbiter, player-side zoom (`GAL_PLAYER_ZOOM_E4`), a green-menu **Verify
+> installed files** action, and car test notes. Any train the upstream
+> profile table matches can install this — profile-driven, no port needed.
+> See [`docs/FORK.md`](docs/FORK.md) (identity and licence),
+> [`CHANGELOG-fork.md`](CHANGELOG-fork.md) (what changed) and
+> [`docs/car-test-notes.md`](docs/car-test-notes.md) (measurements from the
+> car-verified test unit, a Tiguan AD1).
 >
 > Everything below is upstream MacsInSpace's README, verbatim, with its own
 > credits — those remain the reason this works at all.

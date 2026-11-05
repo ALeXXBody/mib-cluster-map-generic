@@ -1,4 +1,6 @@
-# This fork: "MHI2 Cluster Map — Tiguan Edition"
+# This fork: mib-cluster-map-generic
+
+(A fork of MacsInSpace/mib-cluster-map for MHI2 trains; car-verified on a Tiguan AD1 — see [docs/car-test-notes.md](car-test-notes.md).)
 
 **Upstream:** [MacsInSpace/mib-cluster-map](https://github.com/MacsInSpace/mib-cluster-map)
 (GPL-3.0, by MacsInSpace, built on [chopinwong01/mhi2-android-auto-video-vc](https://github.com/chopinwong01/mhi2-android-auto-video-vc),
@@ -39,7 +41,7 @@ strip the upstream credits from the README when you publish.
    a settings issue without pulling the SD card.
 4. **Keep-map and verify wired into the green menu** screen
    (`ClusterMap`), consistent with the existing sharper‑map switch.
-5. **Tiguan documentation** (`docs/Tiguan.md`): what to measure on the car,
+5. **Car test notes** (`docs/car-test-notes.md`): what to measure on the car,
    what the profile rows mean, and how the verified P4521 family fits the
    Tiguan AD1 AID10.
 
@@ -65,7 +67,7 @@ fingerprints still match all the cars upstream already supports.
 
 ```sh
 git remote add origin git@github.com:<your-account>/<your-fork>.git
-git push -u origin tiguan-fork
+git push -u origin aa-vc
 ```
 
 Keep the `LICENSE` (GPL‑3.0) and this file, and note the fork's name in the
