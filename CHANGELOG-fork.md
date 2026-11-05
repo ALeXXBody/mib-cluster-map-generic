@@ -25,3 +25,13 @@ Forked from **MacsInSpace/mib-cluster-map** (upstream main, GPL-3.0 (the LICENSE
 
 Upstream's history is [in its own repository](https://github.com/MacsInSpace/mib-cluster-map/commits/main)
 and is not reproduced here.
+
+### Local build record (zoom-fork-local, 2026-11-05)
+
+stream-player built locally from this tree (v1.1.1-beta18-16-g4b43ddf) with the
+luka-dev/qnx65-armv7-toolchain 8.5 image (gcc 8.5, ffmpeg 6.1.5 mini:
+--disable-everything --enable-decoder=h264 --enable-parser=h264, softfp
+vfpv3-d16) and deployed to the M.I.B. Addon payload. Carries Zoom and the
+keep-map arbiter. Built natively instead of in Docker on a TrueNAS LXC host
+(the image's netavark/crun backends are restricted there); `/opt/qnx650`
+symlinked to the unpacked image root. Pending the owner's car verification.
