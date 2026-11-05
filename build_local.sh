@@ -1,6 +1,8 @@
 #!/bin/bash
 # Local build with the open QNX 6.5 ARMv7 toolchain image (luka-dev/qnx65-armv7-toolchain,
-# tag 8.5).
+# tag 8.5). On hosts where Docker/podman cannot start (TrueNAS LXC and
+# similar), see BUILD_LOCALLY.md for the native (no-container) path that
+# produced the recorded real build in CHANGELOG-fork.md.
 #
 #   ./build_local.sh            build everything and assemble dist/sdcard
 #   ./build_local.sh hook       only libgal_hook.so + libdmdt_flush.so
