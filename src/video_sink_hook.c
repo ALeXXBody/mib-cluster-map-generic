@@ -2592,8 +2592,283 @@ void _ZN10Controller18sendVersionRequestEv(void *receiver)
  * video channel streaming frames cannot flood the log.
  */
 static void input_inject_poll(void *router);
+typedef void (*queue_outgoing_fn)(void *, unsigned char, void *, unsigned);
+static queue_outgoing_fn g_queue_outgoing;
+static void ui_config_poll(void *router);
+
+/* ---- UiConfig sender ("card clear" GEM-free cycle partner) ---------------
+ * Reads /tmp/gal_uiconfig ("top,bottom,left,right" or an empty file to stop
+ * sending) and ships an UpdateUiConfigRequest (media message id 0x8009,
+ * wire: UiConfig{content_insets}) on the cluster video channel — the same
+ * message the fork's build_insets_payload writes at discovery, but at
+ * RUNTIME, so the phone re-lays the card without a reconnect. Enabled with
+ * GAL_UICONFIG=1 (the Addon's GEM turns it on). Written spec-wise against
+ * docs/android-auto-research.md and opencardev's MediaMessageId
+ * (0x8009 = 32777). */
+#define UICONFIG_PATH "/tmp/gal_uiconfig"
+static void ui_config_poll(void *router)
+{
+    FILE *f;
+    static int seen = -1;        /* forces a send when the file first appears */
+    static char last_line[40] = "0,0,0,0";
+    char line[40];
+    unsigned channel;
+    unsigned char msg[64];
+    size_t total = 0u;
+    unsigned t = 0u, b = 0u, l = 0u, r = 0u;
+    static const char *env_gal = NULL;
+    static int env_checked = 0;
+    static int enabled = 0;
+
+    if (!env_checked) {
+        env_checked = 1;
+        env_gal = getenv("GAL_UICONFIG");
+        enabled = (env_gal != NULL && strcmp(env_gal, "0") != 0);
+        gal_hook_logf("event=ui.config enabled=%d path=" UICONFIG_PATH, enabled);
+    }
+    if (!enabled || router == NULL || g_secondary_service_id == 0u) return;
+
+    f = fopen(UICONFIG_PATH, "r");
+    if (f == NULL) { seen = -1; return; }
+    if (fgets(line, sizeof line, f) == NULL) { fclose(f); seen = -1; return; }
+    fclose(f);
+    {
+        /* strip newline/space */
+        size_t i, used = 0u;
+        for (i = 0u; line[i]; ++i) {
+            if (line[i] != '\n' && line[i] != '\r' && line[i] != ' ' && used + 1u < sizeof line)
+                line[used++] = line[i];
+        }
+        line[used] = 0;
+    }
+    if (strcmp(line, last_line) == 0 && seen == 1) return;   /* nothing changed */
+    if (line[0] == 0) {                                        /* empty = stop */
+        if (seen != 1) { seen = 1; }
+        return;
+    }
+    (void)sscanf(line, "%u,%u,%u,%u", &t, &b, &l, &r);
+    { strncpy(last_line, line, sizeof last_line - 1); last_line[sizeof last_line - 1] = 0; }
+    seen = 1;
+
+    (void)resolve_symbol("_ZN13MessageRouter13queueOutgoingEhPvj", (void **)&g_queue_outgoing);
+    if (g_queue_outgoing == NULL) return;
+    channel = g_secondary_service_id;
+    /* UpdateUiConfigRequest { ui_config = 1 { content_insets = 2 {top,bottom,left,right} } } */
+    msg[total++] = 0x80u; msg[total++] = 0x09u;                 /* 0x8009 */
+    msg[total++] = 0x0au;                                       /* field 1 = ui_config */
+    {
+        unsigned ui = total + 1u;                               /* room for inner length */
+        unsigned inner = 0u;
+        unsigned char inner_buf[20];
+        /* content_insets = 2 (tag 0x12) { top 1 bottom 2 left 3 right 4 } */
+        inner_buf[inner++] = 0x12u;
+        {
+            unsigned char ins[12];
+            unsigned bn = 0u;
+            if (t != 0u) { ins[bn++] = 0x08u; while (t >= 0x80u) { ins[bn++] = (unsigned char)((t & 0x7fu) | 0x80u); t >>= 7u; } ins[bn++] = (unsigned char)t; }
+            if (b != 0u) { ins[bn++] = 0x10u; while (b >= 0x80u) { ins[bn++] = (unsigned char)((b & 0x7fu) | 0x80u); b >>= 7u; } ins[bn++] = (unsigned char)b; }
+            if (l != 0u) { ins[bn++] = 0x18u; while (l >= 0x80u) { ins[bn++] = (unsigned char)((l & 0x7fu) | 0x80u); l >>= 7u; } ins[bn++] = (unsigned char)l; }
+            if (r != 0u) { ins[bn++] = 0x20u; while (r >= 0x80u) { ins[bn++] = (unsigned char)((r & 0x7fu) | 0x80u); r >>= 7u; } ins[bn++] = (unsigned char)r; }
+            inner_buf[inner++] = 0x12u;               /* tag 2: content_insets */
+            inner_buf[inner++] = (unsigned char)bn;   /* the insets' length */
+            memcpy(inner_buf + inner, ins, bn);
+            inner += bn;
+        }
+        msg[ui - 1u] = (unsigned char)inner;
+        memcpy(msg + ui, inner_buf, inner);
+        total = ui + inner;
+    }
+    g_queue_outgoing(router, channel, msg, total);
+    gal_hook_logf("event=ui.config.sent channel=%u insets=%s bytes=%u", (unsigned)channel, last_line, (unsigned)total);
+}
+
+/* ---- Cluster remote (no-GEM control of the Addon's own switches) --------
+ * The synthetic cluster input channel carries the cluster's own physical
+ * presses (OK / rotary / View) toward the phone. Those events are OURS to
+ * read: the hook can act on them even when the phone ignores the unbound
+ * codes. Driving our own file-driven features from the cluster is then
+ * GEM-free end to end (see LEDGER + android-auto-research notes).
+ *
+ * Gestures (validated only when GAL_CLUSTER_REMOTE=1):
+ *   OK (23) held >=800ms           -> toggle /tmp/stream-player.navstrip
+ *   OK short press (down+up<800ms) -> cycle a card_clear preset file
+ *                                     (/tmp/gal_uiconfig), which the hook's
+ *                                     ui-config sender applies (0x8009).
+ *   rotary +1/-1 (65536)           -> zoom steps: write /tmp/stream-player.zoom
+ *                                     (already live in the player).
+ * Every action is logged; nothing else changes.
+ */
+#define CLUSTER_REMOTE_TOGGLE "/tmp/stream-player.navstrip"
+#define CLUSTER_REMOTE_ZOOM   "/tmp/stream-player.zoom"
+static int g_cluster_remote = -1;
+
+static int cluster_remote_on(void)
+{
+    if (g_cluster_remote < 0) {
+        const char *v = getenv("GAL_CLUSTER_REMOTE");
+        g_cluster_remote = (v != NULL && strcmp(v, "0") != 0 && strcmp(v, "false") != 0) ? 1 : 0;
+        gal_hook_logf("event=cluster.remote enabled=%d", g_cluster_remote);
+    }
+    return g_cluster_remote;
+}
+
+
+/* start/end bookkeeping for the OK long-press detection. */
+static struct timespec rem_last_ok;          // last OK-down seen
+static unsigned rem_ok_down;                 // 1 while pressed
+static unsigned rem_ok_short_fired;          // short-press cycle already sent
+
+/* Flip the live control file of the player's strip (0 -> 1 -> 0). */
+static void cluster_remote_toggle_strip(void)
+{
+    FILE *f;
+    int now;
+    FILE *r = fopen(CLUSTER_REMOTE_TOGGLE "X", "r"); (void)r;
+    /* read current state if present */
+    f = fopen(CLUSTER_REMOTE_TOGGLE, "r");
+    now = 0;
+    if (f != NULL) {
+        int v; // the file carries "1" or "0"
+        (void)v;
+        char buf[8];
+        if (fgets(buf, sizeof buf, f) != NULL) {
+            now = (buf[0] == '1');
+        }
+        fclose(f);
+    }
+    f = fopen(CLUSTER_REMOTE_TOGGLE ".new", "w");
+    if (f != NULL) {
+        fprintf(f, "%d\n", now ? 0 : 1);
+        fclose(f);
+        (void)remove(CLUSTER_REMOTE_TOGGLE);
+        (void)rename(CLUSTER_REMOTE_TOGGLE ".new", CLUSTER_REMOTE_TOGGLE);
+        gal_hook_logf("event=cluster.remote.strip set=%d", now ? 0 : 1);
+    }
+}
+
+/* Cycle the card-clear preset file: off -> top -> sides -> band -> off.
+ * The ui-config sender (ui_config_poll) applies the file when present; the
+ * "off" preset clears the file so the hook stops sending 0x8009. */
+static void cluster_remote_cycle_card(void)
+{
+    FILE *f = fopen("/tmp/gal_uiconfig", "r");
+    char buf[64] = "";
+    const char *next;
+    if (f != NULL) {
+        if (fgets(buf, sizeof buf, f) != NULL) { /* keep */ }
+        fclose(f);
+    }
+    if (strstr(buf, "0,0,0,0") != NULL)       next = "52,82,0,0";     /* top strip */
+    else if (strstr(buf, "52,82,0,0") != NULL) next = "0,0,100,100";  /* sides free */
+    else if (strstr(buf, "0,0,100,100") != NULL) next = "40,40,0,0";  /* middle band */
+    else if (buf[0] != 0)                     next = "";             /* off */
+    else                                      next = "52,82,0,0";    /* start: top */
+    f = fopen("/tmp/gal_uiconfig", "w");
+    if (f != NULL) {
+        fprintf(f, "%s\n", next);
+        fclose(f);
+        gal_hook_logf("event=cluster.remote.card preset=%s", next[0] ? next : "off");
+    }
+}
+
+/* Zoom step: ±13% (10000..13500), read-modify-write of the player's file. */
+static void cluster_remote_zoom(int step)
+{
+    FILE *f = fopen(CLUSTER_REMOTE_ZOOM, "r");
+    float v = 1.0f;
+    if (f != NULL) {
+        if (fscanf(f, "%f", &v) != 1) v = 1.0f;
+        fclose(f);
+    }
+    v += step > 0 ? 0.13f : -0.13f;
+    if (v > 1.35f) v = 1.35f;
+    if (v < 1.0f) v = 1.0f;
+    f = fopen(CLUSTER_REMOTE_ZOOM, "w");
+    if (f != NULL) {
+        fprintf(f, "%.2f\n", v);
+        fclose(f);
+        gal_hook_logf("event=cluster.remote.zoom value=%.2f", v);
+    }
+}
+
+/* Parse one InputEventIndication-looking message body and run the remote. */
+static void cluster_remote_event(const unsigned char *m, unsigned n)
+{
+    unsigned i = 2u;  /* skip the message id */
+    unsigned keycode = 0u, down = 1u;
+    int delta = 0, is_rot = 0;
+    struct timespec now;
+
+    if (!cluster_remote_on() || m == NULL || n < 4u) return;
+    /* proto3 field scan: 4 = KeyEvent {1 code, 2 action(downbool), 3 meta, 4 long);
+     * 6 = RelativeEvent {1 scan_code, 2 delta}. Tolerant to unknown fields. */
+    while (i + 1u < n) {
+        unsigned tag = m[i++];
+        unsigned f = tag >> 3u, w = tag & 7u;
+        if (w == 0u) {
+            unsigned v = 0u, sh = 0u;
+            while (i < n && (m[i] & 0x80u)) { v |= (unsigned)(m[i] & 0x7fu) << sh; ++i; sh += 7u; }
+            if (i < n) { v |= (unsigned)(m[i] & 0x7fu) << sh; ++i; }
+            if (f == 1u && is_rot == 0) keycode = v;
+            if (f == 2u && is_rot == 0) down = v;
+            if (f == 1u && is_rot) delta = (int)v;
+        } else if (w == 2u) {
+            { unsigned sz = m[i]; ++i; i += sz; }   /* skip string payload */
+            /* the inner field of InputEvent/RelativeEvent: tag 0x08 = code,
+             * tag 0x10 = action/delta */
+            if (i < n) {
+                unsigned itag = m[i]; ++i;
+                unsigned ifld = itag >> 3u, iw = itag & 7u;
+                unsigned v = 0u, sh = 0u;
+                while (i < n && (m[i] & 0x80u)) { v |= (unsigned)(m[i] & 0x7fu) << sh; ++i; sh += 7u; }
+                if (i < n) { v |= (unsigned)(m[i] & 0x7fu) << sh; ++i; }
+                if (f == 6u && itag == 0x08u) { is_rot = 1; keycode = v; }
+                else if (f == 6u && (itag == 0x10u || itag == 0x11u)) { delta = (int)v; }
+                else if (f == 4u && itag == 0x08u) { keycode = v; }
+                else if (f == 4u && itag == 0x10u) { down = v; }
+                (void)ifld; (void)iw;
+            }
+            if (w == 2u) { /* the length was consumed above */ }
+        } else {
+            /* unknown wire type: bail out rather than misparse */
+            break;
+        }
+    }
+
+    /* Interpret: OK (23) press/release with up-time; rotary (65536). */
+    if (is_rot) {
+        cluster_remote_zoom(delta > 0 ? 1 : -1);
+        return;
+    }
+    if (keycode == 23u) {
+        unsigned long held;
+        if (down) {
+            clock_gettime(CLOCK_MONOTONIC, &rem_last_ok);
+            rem_ok_down = 1u;
+            rem_ok_short_fired = 0u;
+            return;
+        }
+        if (!rem_ok_down) return;
+        rem_ok_down = 0u;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        held = (unsigned long)now.tv_sec * 1000000000ul + now.tv_nsec
+             - ((unsigned long)rem_last_ok.tv_sec * 1000000000ul
+              + (unsigned long)rem_last_ok.tv_nsec);
+        gal_hook_logf("event=cluster.remote.ok held_ms=%lu", held / 1000000ul);
+        if (held < 800000000ul) {                /* short: under 0.8 s */
+            if (!rem_ok_short_fired) {
+                cluster_remote_cycle_card();
+                rem_ok_short_fired = 1u;
+            }
+        } else {                                  /* long: 0.8 s or more */
+            cluster_remote_toggle_strip();
+        }
+    }
+}
+
 static void cluster_input_message(void *router, unsigned char channel, const void *buffer);
 static void hex_preview(const unsigned char *p, unsigned n, char *out, size_t out_len);
+
 
 /* ---- Turn-info file (the player's "turn info strip" feature) -------------
  * One ASCII line rewritten on every change of the translated navigation
@@ -2667,6 +2942,7 @@ void _ZN13MessageRouter12routeMessageEhRK10shared_ptrI8IoBufferE(
     unsigned long count;
 
     input_inject_poll(router);
+    ui_config_poll(router);
 
     (void)resolve_symbol("_ZN13MessageRouter12routeMessageEhRK10shared_ptrI8IoBufferE",
                          (void **)&g_route_message);
@@ -2965,8 +3241,6 @@ void _ZN13MessageRouter21sendUnexpectedMessageEh(void *router, unsigned char cha
 
 /* ---------------- Input: cluster key binding and the injection harness ---------------- */
 
-typedef void (*queue_outgoing_fn)(void *, unsigned char, void *, unsigned);
-static queue_outgoing_fn g_queue_outgoing;
 #define INJECT_PATH "/tmp/gal_inject"
 
 /*
@@ -3151,9 +3425,12 @@ static void cluster_input_message(void *router, unsigned char channel, const voi
             gal_hook_logf("event=cluster.input.binding channel=%u request=%s reply=unsent", (unsigned)channel, hex);
         }
     } else {
-        static unsigned logged;
-        if (logged++ < 40u)
-            gal_hook_logf("event=cluster.input.msg channel=%u msg_id=0x%04x bytes=%u data=%s", (unsigned)channel, id, n, hex);
+        if (id == 0x8001u) cluster_remote_event(m, n);   /* gesture remote */
+        else {
+            static unsigned logged;
+            if (logged++ < 40u)
+                gal_hook_logf("event=cluster.input.msg channel=%u msg_id=0x%04x bytes=%u data=%s", (unsigned)channel, id, n, hex);
+        }
     }
 }
 

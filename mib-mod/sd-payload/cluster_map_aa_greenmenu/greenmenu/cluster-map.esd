@@ -6,7 +6,7 @@
 # Main -> ClusterMap
 #
 # The entries run scripts straight from the SD card in slot 1:
-#   /fs/sda0/ClusterMap/GEM/
+#   /net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/
 #
 ###########################################################################################
 screen ClusterMap Main
@@ -22,49 +22,97 @@ keyValue
     poll    0
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/status.sh"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/status.sh"
     label   "1. Status and compatibility check"
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/install.sh"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/install.sh"
     label   "2. Install cluster map"
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/full_frame_on.sh"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/full_frame_on.sh"
     label   "Sharper map ON (full frame; reboot after)"
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/full_frame_off.sh"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/full_frame_off.sh"
     label   "Sharper map OFF (standard; reboot after)"
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/keep_map.sh on"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/keep_map.sh on"
     label   "Keep map ON (arbiter; fork)"
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/keep_map.sh off"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/keep_map.sh off"
     label   "Keep map OFF (standard; fork)"
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/verify.sh"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/verify.sh"
     label   "Verify installed files (fork)"
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/uninstall.sh"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/zoom.sh off"
+    label   "Zoom 1.0 (off; standard map view)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/zoom.sh 1.15"
+    label   "Zoom 1.15 (crop-and-enlarge; live)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/zoom.sh 1.35"
+    label   "Zoom 1.35 (crop-and-enlarge; live)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh top"
+    label   "Turn-card clear: TOP strip"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh sides"
+    label   "Turn-card clear: SIDES free"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh band"
+    label   "Turn-card clear: middle BAND"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh off"
+    label   "Turn-card clear: OFF (standard layout)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/navstrip.sh on"
+    label   "Turn info strip: ON (road | ETA | distance)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/navstrip.sh off"
+    label   "Turn info strip: OFF"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/cluster_remote.sh on"
+    label   "Cluster remote: ON (OK press = toggle strip / presets)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/cluster_remote.sh off"
+    label   "Cluster remote: OFF"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/uninstall.sh"
     label   "Uninstall and restore original state"
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/switch_to_turn_by_turn.sh"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/switch_to_turn_by_turn.sh"
     label   "Switch to turn-by-turn arrows instead (no map)"
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/savelogs.sh"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/savelogs.sh"
     label   "Save logs to SD"
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/collect_for_porting.sh"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/collect_for_porting.sh"
     label   "Collect files for porting (quick)"
 
 script
-    value   sys 1 0x0100 "/fs/sda0/ClusterMap/GEM/collect_for_porting_full.sh"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/collect_for_porting_full.sh"
     label   "Collect for porting, with Java image (55 MB, slow)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/esd/scripts/reboot.sh"
+    label   "Reboot the unit (M.I.B.'s own reboot, 10 s countdown)"
