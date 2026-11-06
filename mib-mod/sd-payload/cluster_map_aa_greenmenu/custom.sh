@@ -34,7 +34,7 @@ export PATH=.:/proc/boot:/bin:/usr/bin:/usr/sbin:/sbin:/mnt/app/media/grancenote
 export LD_LIBRARY_PATH=/lib:/mnt/app/root/lib-target:/eso/lib:/mnt/app/usr/lib:/mnt/app/armle/lib:/mnt/app/armle/lib/dll:/mnt/app/armle/usr/lib
 unset LD_PRELOAD
 
-echo -ne "M.I.B. - More Incredible Bash - "
+printf "M.I.B. - More Incredible Bash - "
 cat /net/mmx/fs/sda0/VERSION 2>/dev/null
 echo "Cluster Map — Android Auto to Virtual Cockpit (mib-cluster-map mod)"
 echo ""
@@ -47,12 +47,21 @@ fi
 # --------------------------- ADDON CODE ------------------------------------
 
 # 1. Find the mod payload on the card (slot 1 or slot 2).
+# Same discovery philosophy as the mod's greenmenu/common.sh find_card():
+# the card can appear under any local or network view, and the payload in
+# any of the known layouts. The mount table is tried first.
 SD=""
-for v in /net/mmx/fs/sda0 /net/mmx/fs/sdb0 /fs/sda0 /fs/sdb0; do
-	if [ -f "$v/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd" ]; then
-		SD=$v
-		break
-	fi
+SDCANDS=`mount 2>/dev/null | sed -n "s|^.* on \(/[^ ]*\) .*|\1|p"`
+SDCANDS="$SDCANDS /net/mmx/fs/sda0 /net/mmx/fs/sdb0 /fs/sda0 /fs/sdb0"
+for v in $SDCANDS; do
+	if [ -d "$v" ] || [ -f "$v" ]; then :; else continue; fi
+	for rel in mod/cluster_map_aa_greenmenu ClusterMap cluster_map_aa_greenmenu mod/ClusterMap; do
+		if [ -f "$v/$rel/greenmenu/cluster-map.esd" ]; then
+			SD=$v
+			break
+		fi
+	done
+	[ -n "$SD" ] && break
 done
 if [ -z "$SD" ]; then
 	echo "FAIL: mod/cluster_map_aa_greenmenu/ was not found on the SD card."
@@ -69,13 +78,47 @@ echo ""
 #    reboots; the fork's uninstall removes it again.
 ENGDEFS=/net/mmx/mnt/app/eso/hmi/engdefs
 mount -uw /net/mmx/mnt/app 2>/dev/null
-cp -p "$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd" \
+# Generate the screen file FROM FIND_CARD'S RESULT: every GEM item's script
+# path must name the card view this console actually sees — hardcoding
+# /net/mmx/fs/sda0/... made the buttons break whenever the card's view
+# changed (the "Script not found" screens). The template carries a
+# @GREENMENU@ placeholder; the located path replaces it.
+TPL="$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.template.esd"
+CONSOLE_ERRORS=""
+if [ -f "$TPL" ]; then
+	# the view this console itself resolved the payload under: prefer the
+	# payload path EXACTLY as custom.sh found it ($SD), not the fixed forms
+	GEN=`sed "s|@GREENMENU@|$SD/mod/cluster_map_aa_greenmenu/greenmenu/|g" "$TPL"`
+	# verify every generated script file exists NOW; report the missing ones
+	echo "  GEM screen paths check (from the template):"
+	echo "$GEN" | while IFS= read -r ln; do
+		case "$ln" in
+			*value*0x0100\ *|*value*system*)
+				continue ;;
+			*)
+				continue ;;
+		esac
+	done
+	# (the real check: extract each quoted script path and test it)
+	echo "$GEN" | grep -o '"/net/[^"]*\.sh[^"]*"' | tr -d '"' | while IFS= read -r sp; do
+		sp=${sp%% *}
+		case "$sp" in */esd/scripts/*) continue ;; esac   # M.I.B.'s own scripts (reboot) live on the unit, not on our card
+		if [ ! -f "$sp" ]; then
+			echo "    MISSING on the card: $sp"
+			CONSOLE_ERRORS=1
+		fi
+	done
+	printf '%s\n' "$GEN" > "$ENGDEFS/cluster-map.esd"
+	echo "  GEM screen generated from the card: $ENGDEFS/cluster-map.esd"
+else
+	cp -p "$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd" \
 	"$ENGDEFS/cluster-map.esd" || {
 	echo "FAIL: could not write $ENGDEFS/cluster-map.esd"
 	echo "(Is M.I.B. installed? It creates/maintains that folder.)"
 	trap 2
 	exit 1
-}
+	}
+fi
 echo "GEM screen installed on the unit: $ENGDEFS/cluster-map.esd"
 echo ""
 
@@ -103,6 +146,20 @@ sh "$SD/mod/cluster_map_aa_greenmenu/greenmenu/install.sh" > $OUT 2>&1
 RESULT=$?
 cat $OUT
 
+echo ""
+echo "--- install self-check (unit files) --------------------------------"
+for u in /mnt/app/eso/lib/gal_dualscreen/profiles.conf \
+         /mnt/app/eso/lib/gal_dualscreen/libgal_hook.so \
+         /mnt/app/eso/lib/gal_dualscreen/gal_dualscreen.conf \
+         /mnt/app/navigation/stream-player; do
+	if [ -r "$u" ]; then
+		echo "  ok: $u"
+	else
+		echo "  MISSING: $u  <- the hook will stay stock until this exists"
+	fi
+done
+echo "  (a MISSING line here = the finalize step did not run: re-copy the"
+echo "   mod/ folder, re-run this screen, or send this photo.)"
 echo ""
 if grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" $OUT; then
 	echo "Install finished. Reboot the unit (hold the power button for 10"
