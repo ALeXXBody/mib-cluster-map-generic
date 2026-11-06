@@ -17,10 +17,28 @@ export LD_LIBRARY_PATH
 set -eu
 
 CARD_ROOT=`cd "\`dirname "$0"\`" && pwd`
+# Same payload-root resolution as enable_hook.sh: the fork's scripts/ copy
+# of this tree still resolves to the folder that holds the payload files.
+if [ ! -f "$CARD_ROOT/libgal_hook.so" ] && [ -f "$CARD_ROOT/../libgal_hook.so" ]; then
+    CARD_ROOT=`cd "$CARD_ROOT/.." && pwd`
+fi
 SYSTEM_MOUNT=/mnt/system
 TARGET_CONFIG=$SYSTEM_MOUNT/etc/eso/production/smartphone_integrator.json
 PERSISTENT_BACKUP=$TARGET_CONFIG.gal-dualscreen.original
-ORIGINAL="$CARD_ROOT/backups/smartphone_integrator.json.original"
+# Uninstall-and-restore: the install may have written its backups in one of
+# two homes (card when writable; /tmp when the card was read-only). Try the
+# card first, then the tmp home the v0.4.14 installer records. .last_paths
+# carries BACKUP_DIR/LOG_DIR; so uninstall looks in both homes.
+if [ -f "$CARD_ROOT/last_install_paths.txt" ]; then . "$CARD_ROOT/last_install_paths.txt" 2>/dev/null; elif [ -f /tmp/clustermap_last_paths ]; then . /tmp/clustermap_last_paths 2>/dev/null; fi
+BACKUP_DIR=""
+if [ -f "$CARD_ROOT/last_install_paths.txt" ]; then
+    BACKUP_DIR=`sed -n "s/^BACKUP_DIR=//p" "$CARD_ROOT/last_install_paths.txt" | tail -1`
+elif [ -f /tmp/clustermap_last_paths ]; then
+    BACKUP_DIR=`sed -n "s/^BACKUP_DIR=//p" /tmp/clustermap_last_paths | tail -1`
+fi
+[ -r "$CARD_ROOT/backups/smartphone_integrator.json.original" ] && BACKUP_DIR="$CARD_ROOT/backups"
+[ -r "$BACKUP_DIR/smartphone_integrator.json.original" ] || BACKUP_DIR=/tmp/clustermap_unit/backups
+ORIGINAL="$BACKUP_DIR/smartphone_integrator.json.original"
 JSONLINT=/mnt/app/eso/bin/jsonlint
 VALIDATOR_LD_LIBRARY_PATH=/proc/boot:/lib:/lib/dll:/usr/lib:/mnt/app/root/lib-target:/mnt/app/usr/lib:/mnt/app/armle/lib:/mnt/app/armle/lib/dll:/mnt/app/armle/usr/lib:/eso/lib:/mnt/app/eso/lib
 SYSTEM_WRITABLE=0
@@ -103,25 +121,10 @@ carplay_pf_close
 # during a real recovery, which is the worst time to find out.
 # Confirmed by VcMOSTRenderMqb's stream player (dc 70 3 / sc 4 70,
 # restoring with dc 70 33 / sc 4 70) and by on-car notes.
-# Those are VW/SEAT/Skoda numbers; a car whose settings name another
-# cockpit context (Audi, #14) is restored with its own.
-vc_setting()
-{
-    v=
-    for f in "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" "$CARD_ROOT/gal_dualscreen.conf"; do
-        [ -r "$f" ] || continue
-        v=`sed -n "s/^$1=\([0-9][0-9]*\)[ 	]*\r*$/\1/p" "$f" 2>/dev/null | tail -1`
-        if [ -n "$v" ]; then break; fi
-    done
-    echo "${v:-$2}"
-}
-VC_CTX=`vc_setting GAL_VC_CONTEXT 70`
-VC_DISP=`vc_setting GAL_VC_DISPLAY 4`
-VC_STOCK=`vc_setting GAL_VC_RESTORE_DISPLAYABLE_ID 33`
 VC_ROUTE_RESTORED=0
 if [ -x /eso/bin/apps/dmdt ]; then
-    if (cd /eso && IPL_CONFIG_DIR=/etc/eso/production ./bin/apps/dmdt dc $VC_CTX $VC_STOCK) &&
-       (cd /eso && IPL_CONFIG_DIR=/etc/eso/production ./bin/apps/dmdt sc $VC_DISP $VC_CTX); then
+    if (cd /eso && IPL_CONFIG_DIR=/etc/eso/production ./bin/apps/dmdt dc 70 33) &&
+       (cd /eso && IPL_CONFIG_DIR=/etc/eso/production ./bin/apps/dmdt sc 4 70); then
         VC_ROUTE_RESTORED=1
     fi
 fi
@@ -134,8 +137,8 @@ else
     echo "Original persistent smartphone_integrator.json restored."
     echo "  WARNING: could not set the VC route back to stock displayable 33 via dmdt." >&2
     echo "  If the cockpit was switched to displayable 3, restore it manually with:" >&2
-    echo "    cd /eso && IPL_CONFIG_DIR=/etc/eso/production ./bin/apps/dmdt dc $VC_CTX $VC_STOCK" >&2
-    echo "    cd /eso && IPL_CONFIG_DIR=/etc/eso/production ./bin/apps/dmdt sc $VC_DISP $VC_CTX" >&2
+    echo "    cd /eso && IPL_CONFIG_DIR=/etc/eso/production ./bin/apps/dmdt dc 70 33" >&2
+    echo "    cd /eso && IPL_CONFIG_DIR=/etc/eso/production ./bin/apps/dmdt sc 4 70" >&2
 fi
 echo "  restored from: $RESTORE_SOURCE"
 
@@ -158,7 +161,6 @@ if [ -d "$PRELOAD_WRITE_DIR" ] || [ -f "$APP_MOUNT/eso/lib/libdmdt_flush.so" ] |
         rm -f "$APP_MOUNT/eso/lib/libdmdt_flush.so" 2>/dev/null || true
         # The CarPlay map's safe area, read only by its hook.
         rm -f "$APP_MOUNT/root/mibr-carplay111-safearea.conf" 2>/dev/null || true
-        rm -f "$APP_MOUNT/root/mibr-carplay111-nav-query.enabled" "$APP_MOUNT/root/mibr-carplay111-nav."* 2>/dev/null || true
         # enable_hook.sh put the player here; nothing else on the unit uses it.
         if rm -f "$APP_MOUNT/navigation/stream-player" 2>/dev/null; then
             echo "  removed player: $APP_MOUNT/navigation/stream-player"
