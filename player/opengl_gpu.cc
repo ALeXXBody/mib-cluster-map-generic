@@ -1717,6 +1717,11 @@ static void load_player_config() {
             g_marginH = h & ~1;
         }
     }
+    /* Fork: the Turn-info strip's installed default comes from the settings
+     * file's GAL_NAV_INFO_STRIP (hook passes it into the player's env; the
+     * live control file /tmp/stream-player.navstrip overrides per write). */
+    env_val = getenv("GAL_NAV_INFO_STRIP");
+    if (env_val && (*env_val == '1' || *env_val == 'y' || *env_val == 'Y')) ts_on = 1;
     env_val = getenv("GAL_SECONDARY_PIXEL_ASPECT_RATIO_E4");
     if (env_val) {
         int e4 = atoi(env_val);

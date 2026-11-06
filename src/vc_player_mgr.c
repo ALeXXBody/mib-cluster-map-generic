@@ -401,16 +401,31 @@ void vc_player_start(void)
         const gal_secondary_config *cfg = gal_hook_config();
         char margins_env[48];
         char aspect_env[56];
+        char navstrip_env[32];
         (void)snprintf(margins_env, sizeof(margins_env), "GAL_SECONDARY_MARGINS=%ux%u",
                        cfg->margin_width, cfg->margin_height);
         (void)snprintf(aspect_env, sizeof(aspect_env), "GAL_SECONDARY_PIXEL_ASPECT_RATIO_E4=%u",
                        cfg->pixel_aspect_ratio_e4 ? cfg->pixel_aspect_ratio_e4 : 10000u);
+        {
+            /* The Turn-info strip needs to know its installed default before
+             * its control file is ever touched: the shipped setting is
+             * GAL_NAV_INFO_STRIP=1 (the Addon's GEM switch flips it live via
+             * /tmp/stream-player.navstrip). NULL when unset, which keeps the
+             * strip off in environments that never asked for it. */
+            const char *v = getenv("GAL_NAV_INFO_STRIP");
+            if (v != NULL && *v != 0)
+                (void)snprintf(navstrip_env, sizeof(navstrip_env),
+                               "GAL_NAV_INFO_STRIP=%s", v);
+            else
+                navstrip_env[0] = 0;
+        }
         char *envp[] = {
             (char *)"IPL_CONFIG_DIR=/etc/eso/production",
             (char *)"LD_LIBRARY_PATH=/proc/boot:/lib:/lib/dll:/usr/lib:/mnt/app/root/lib-target:/mnt/app/usr/lib:/mnt/app/armle/lib:/mnt/app/armle/lib/dll:/mnt/app/armle/usr/lib:/eso/lib:/mnt/app/eso/lib:/fs/sdb0/lib",
             (char *)"PATH=/proc/boot:/bin:/usr/bin:/usr/sbin:/sbin:/eso/bin:/mnt/app/eso/bin:/fs/sdb0/bin:/mnt/app/navigation",
             margins_env,
             aspect_env,
+            navstrip_env,
             NULL
         };
         int log_fd = use_spawn ? open_player_log() : -1;
