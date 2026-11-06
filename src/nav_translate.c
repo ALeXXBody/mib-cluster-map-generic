@@ -30,6 +30,11 @@
 
 static nav_translate_info g_last;
 
+/* The road text lives here so g_last.road can NEVER dangle: a pointer into a
+ * caller's stack frame would read garbage by the time the hook's caller (the
+ * turn-info writer) reaches it. The copy is bounded and always 0-terminated. */
+static char g_road_store[96];
+
 const nav_translate_info *nav_translate_last(void) { return &g_last; }
 
 /* ---- a bounded protobuf reader ------------------------------------------ */
@@ -303,7 +308,15 @@ int nav_translate(const unsigned char *in, unsigned in_len,
         g_last.event = t.event;
         g_last.side = t.side;
         g_last.road_len = t.road_len;
-        g_last.road = (t.road_len > 0u) ? (const char *)t.road : NULL;
+        /* copy rather than alias: t is a stack local of nav_translate() */
+        g_last.road = NULL;
+        if (t.road_len > 0u) {
+            size_t copy = t.road_len < sizeof g_road_store ? t.road_len : sizeof g_road_store - 1u;
+            memcpy(g_road_store, t.road, copy);
+            g_road_store[copy] = '\0';
+            g_last.road = g_road_store;
+            g_last.road_len = (unsigned)copy;
+        }
         return (int)o.n;
     }
     if (id == 0x8007u) {
@@ -316,7 +329,8 @@ int nav_translate(const unsigned char *in, unsigned in_len,
         g_last.to_id = 0x8005u;
         g_last.meters = g_meters;
         g_last.seconds = g_seconds;
-        g_last.road = (g_last.road_len > 0u && g_last.road != NULL) ? g_last.road : NULL;
+        /* distance refresh: keep the previously stored road text */
+        g_last.road = (g_last.road_len > 0u) ? g_road_store : NULL;
         return (int)o.n;
     }
     if (id == 0x8003u) {
