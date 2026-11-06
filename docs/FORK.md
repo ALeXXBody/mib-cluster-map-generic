@@ -1,6 +1,6 @@
 # This fork: mib-cluster-map-generic
 
-(A fork of MacsInSpace/mib-cluster-map for MHI2 trains; car-verified on a Tiguan AD1 — see [docs/car-test-notes.md](car-test-notes.md).)
+(Based on MacsInSpace/mib-cluster-map for MHI2 trains; GPL credits and the per-file licence notes stay with the engine. Car-verified on a Tiguan AD1 — see [docs/car-test-notes.md](car-test-notes.md).)
 
 **Upstream:** [MacsInSpace/mib-cluster-map](https://github.com/MacsInSpace/mib-cluster-map)
 (GPL-3.0, by MacsInSpace, built on [chopinwong01/mhi2-android-auto-video-vc](https://github.com/chopinwong01/mhi2-android-auto-video-vc),

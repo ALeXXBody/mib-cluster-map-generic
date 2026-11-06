@@ -1,0 +1,16 @@
+name: find_card locator test (payload path variant)
+
+on: [push, pull_request]
+
+jobs:
+  find-card:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate the payload in THIS repo's layout then run the locator test
+        run: |
+          # the Addon's find_card test expects mod/cluster_map_aa_greenmenu/…
+          # this repo carries the same tree under mib-mod/sd-payload/, so
+          # symlink the expected path for the test run.
+          ln -s mib-mod/sd-payload mod
+          tools/find_card_test.sh

@@ -1,6 +1,6 @@
 # MIB Cluster Map
 
-> **This is a fork of MacsInSpace's `mib-cluster-map`** for MHI2 (MIB2.5 High)
+> **This project carries MacsInSpace's `mib-cluster-map` engine** for MHI2 (MIB2.5 High)
 > trains, adding a few robustness features: a `GAL_KEEP_MAP` cockpit source
 > arbiter, player-side zoom (`GAL_PLAYER_ZOOM_E4`), a green-menu **Verify
 > installed files** action, and car test notes. Any train the upstream
@@ -218,7 +218,7 @@ addresses.
 ## Credits
 
 - **chopinwong01**: [mhi2-android-auto-video-vc](https://github.com/chopinwong01/mhi2-android-auto-video-vc),
-  the hook and player this project is forked from. Its design notes and
+  the hook and player this project builds from. Its design notes and
   development story stay there.
 - **andrewleech** and **OneB1t**: VcMOSTRenderMqb, the cluster rendering path
   the player derives from.

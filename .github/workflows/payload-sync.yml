@@ -1,0 +1,45 @@
+name: payload sync check
+
+on:
+  push:
+    branches: [aa-vc, main]
+  pull_request:
+  schedule:
+    # every night, in case the Addon side moved while this repo did not
+    - cron: '15 2 * * *'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Copy the Addon payload over sd-payload if drifted'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+
+jobs:
+  sync-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the Addon (the shipping payload)
+        uses: actions/checkout@v4
+        with:
+          repository: ALeXXBody/MIB-Addon-Cluster-AA-CP
+          path: addon
+
+      - name: Compare sd-payload against the Addon payload
+        run: tools/payload_sync.sh "$GITHUB_WORKSPACE/addon"
+
+      - name: Apply + commit when drifted and asked to
+        if: failure() && github.event_name == 'workflow_dispatch' && inputs.apply == 'true'
+        run: tools/payload_sync.sh "$GITHUB_WORKSPACE/addon" --apply
+      - name: Commit the synced payload
+        if: failure() && github.event_name == 'workflow_dispatch' && inputs.apply == 'true'
+        run: |
+          git config user.name "payload-sync bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add mib-mod/sd-payload
+          git diff --cached --quiet || git commit -m "payload: sync from the Addon repo (workflow_dispatch apply)"
+          git push
