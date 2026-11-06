@@ -391,11 +391,21 @@ static int verify_firmware_abi(void)
                              "_ZTVN3gal25CVideoSinkCallbackHandlerE");
 
     {
+        /* Where the profile table can live. Two families: the fork's own
+         * installed copies under /eso + gal_dualscreen (written by the
+         * installer), the standalone card layouts, AND the M.I.B. mod layout
+         * the Addon uses (<card>/mod/cluster_map_aa_greenmenu). The mod
+         * path is derived from this hook's own location when the conf knob
+         * names it; a hard error there would be fatal, so the file is only
+         * tried when its first "profile" line reads sane. */
         static const char *const paths[] = {
             "/eso/lib/gal_dualscreen/profiles.conf",
             "/mnt/app/eso/lib/gal_dualscreen/profiles.conf",
             "/fs/sda0/ClusterMap/profiles.conf",
             "/fs/sdb0/ClusterMap/profiles.conf",
+            "/fs/sda0/mod/cluster_map_aa_greenmenu/profiles.conf",
+            "/fs/sdb0/mod/cluster_map_aa_greenmenu/profiles.conf",
+            "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/profiles.conf",
         };
         unsigned rejected = 0u, n;
         for (n = 0u; n < sizeof paths / sizeof paths[0] && g_profile_count == 0u; ++n) {
